@@ -12,7 +12,7 @@ console.log("API KEY", process.env.API_KEY);
 
 const app = express();
 
-// Configuración del almacenamiento del middleware Multer
+//Multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/');
