@@ -5,14 +5,50 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const Router = require('./routes/Router');
-const apiKEY = require('@vpriem/express-api-key-auth');
+
+//JWT
+const jwt = require('jsonwebtoken'); 
 require('dotenv').config();
 
-console.log("API KEY", process.env.API_KEY);
+// APPIKEY
+// const apiKEY = require('@vpriem/express-api-key-auth');
+// console.log("API KEY cargada desde .env:", process.env.API_KEY);
 
 const app = express();
 
-// Multer
+// JWT
+app.post('/login', (req, res) => {
+  const { usuario, password } = req.body;
+  
+  if (usuario === 'admin' && password === '1234') {
+    const payload = { nombre: 'Gael Onofre García', rol: 'administrador' };
+    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secreto-super-seguro', { expiresIn: '1h' });
+    
+    return res.json({ mensaje: 'Autenticación exitosa', token: token });
+  }
+  return res.status(401).json({ error: 'Credenciales incorrectas' });
+});
+
+
+// Middleware JWT
+const verificarJWT = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Acceso denegado. Se requiere un token Bearer.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decodificado = jwt.verify(token, process.env.JWT_SECRET || 'secreto-super-seguro');
+    req.usuario = decodificado; 
+    next(); 
+  } catch (error) {
+    return res.status(403).json({ error: 'Token inválido o expirado.' });
+  }
+};
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/');
@@ -25,7 +61,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Vista
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'Vistas'));
 
@@ -38,7 +73,6 @@ app.use((req, res, next) => {
   next(); 
 });
 
-// Ruta para recibir archivos
 app.post('/subir-archivo', upload.single('archivo'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se envió ningún archivo' });
@@ -55,7 +89,6 @@ app.post('/subir-archivo', upload.single('archivo'), (req, res) => {
   });
 });
 
-// Uso vista
 app.get('/ruta', (req, res, next) => {
   let opciones = {
     titulo: "Monster Hunter",
@@ -65,7 +98,10 @@ app.get('/ruta', (req, res, next) => {
   res.render('plantilla', opciones);
 });
 
-app.use('/monstruos', apiKEY.apiKeyAuth([process.env.API_KEY]), Router.router);
+// app.use('/monstruos', apiKEY.apiKeyAuth([process.env.API_KEY]), Router.router);
+
+// JWT
+app.use('/monstruos', verificarJWT, Router.router);
 
 app.listen(8082, function(err) {
   if (err) console.log(err);
