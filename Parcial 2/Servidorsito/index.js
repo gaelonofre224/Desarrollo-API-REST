@@ -55,7 +55,7 @@ const esquemaMonstruo = z.object({
   nombre: z.string({
     required_error: "El nombre es obligatorio",
     invalid_type_error: "El nombre debe ser una cadena de texto"
-  }).min(3, "El nombre debe tener al menos 3 caracteres"),
+  }).min(3, "El nombre es demasiado corto! debe tener al menos 3 caracteres"),
 
   especie: z.string({
     required_error: "La especie es obligatoria"
@@ -152,7 +152,7 @@ app.use('/monstruos', Router.router);
 
 // Servidor HTTPS
 https.createServer(opcionesHttps, app).listen(8082, () => {
-  console.log("🔒 Servidor seguro HTTPS escuchando en: https://localhost:8082");
+  console.log("Servidor seguro HTTPS escuchando en: https://localhost:8082");
 });
 
 // app.listen(8082, function(err) {
