@@ -65,10 +65,6 @@ app.get('/anilist', async (req, res) => {
 });
 
 
-app.get('/', (req, res) => {
-  res.send('Servidor Express listo para consultas GraphQL. Visita /anilist para probar.');
-});
-
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en: http://localhost:${PORT}`);
   console.log(`Ruta GraphQL lista en: http://localhost:${PORT}/anilist`);
