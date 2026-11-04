@@ -1,12 +1,62 @@
 const express = require('express');
-const halson = require('halson'); // Importar halson para la tarea de HATEOAS
+const halson = require('halson');
 const router = express.Router();
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Monstruo:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         name:
+ *           type: string
+ *           example: "Rathalos"
+ *         species:
+ *           type: string
+ *           example: "flying wyvern"
+ *         description:
+ *           type: string
+ *           example: "Apex monster of the Ancient Forest. Territorial predator that descends upon invaders from the sky."
+ *         elements:
+ *           type: array
+ *           items:
+ *             type: string
+ *           example: ["fire"]
+ */
+
+/**
+ * @swagger
+ * /monstruos:
+ *   get:
+ *     summary: Obtener lista de monstruos
+ *     description: Retorna la lista completa de monstruos disponibles en la API o filtrados por especie
+ *     tags:
+ *       - Monstruos
+ *     parameters:
+ *       - in: string
+ *         name: especie
+ *         schema:
+ *         description: Filtra los monstruos por el nombre de su especie
+ *     responses:
+ *       200:
+ *         description: Lista de monstruos obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Monstruo'
+ *       500:
+ *         description: Error interno del servidor al consultar la fuente de datos
+ */
 router.get('/', async (req, res, next) => {
   try {
     const respuesta = await fetch('https://mhw-db.com/monsters');
     const monstruos = await respuesta.json();
-
     const { especie } = req.query;
 
     if (especie) {
@@ -15,7 +65,6 @@ router.get('/', async (req, res, next) => {
       );
       return res.json(filtrados);
     }
-
     res.json(monstruos);
   } catch (error) {
     next(error);
@@ -33,7 +82,7 @@ router.get('/:id', async (req, res, next) => {
 
     const monstruo = await respuesta.json();
     
-    // --- TAREA: RESPUESTA HATEOAS ---
+    // HATEOAS
     const recursoHateoas = halson(monstruo)
       .addLink('self', `/monstruos/${id}`)                               
       .addLink('actualizar', { href: `/monstruos/${id}`, method: 'PUT' }) 

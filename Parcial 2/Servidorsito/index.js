@@ -6,7 +6,10 @@ const fs = require('fs');
 const multer = require('multer');
 const Router = require('./routes/Router');
 const https = require('https');
-const { z } = require('zod'); //zod
+
+// modulos swagger 1
+const swaggerUI = require('swagger-ui-express');
+const swaggerJsDoc = require('swagger-jsdoc');
 
 require('dotenv').config();
 
@@ -16,31 +19,14 @@ require('dotenv').config();
 
 // --- JWT ---
 // const jwt = require('jsonwebtoken'); 
+// app.post('/login', (req, res) => { ... });
+// const verificarJWT = (req, res, next) => { ... };
 
-// app.post('/login', (req, res) => {
-//   const { usuario, password } = req.body;
-//   if (usuario === 'admin' && password === '1234') {
-//     const payload = { nombre: 'Gael Onofre García', rol: 'administrador' };
-//     const token = jwt.sign(payload, process.env.JWT_SECRET || 'secreto-super-seguro', { expiresIn: '1h' });
-//     return res.json({ mensaje: 'Autenticación exitosa', token: token });
-//   }
-//   return res.status(401).json({ error: 'Credenciales incorrectas' });
-// });
-
-// const verificarJWT = (req, res, next) => {
-//   const authHeader = req.headers['authorization'];
-//   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-//     return res.status(401).json({ error: 'Acceso denegado. Se requiere un token Bearer.' });
-//   }
-//   const token = authHeader.split(' ')[1];
-//   try {
-//     const decodificado = jwt.verify(token, process.env.JWT_SECRET || 'secreto-super-seguro');
-//     req.usuario = decodificado; 
-//     next(); 
-//   } catch (error) {
-//     return res.status(403).json({ error: 'Token inválido o expirado.' });
-//   }
-// };
+// --- VALIDACIÓN CON ZOD ---
+// const { z } = require('zod');
+// const esquemaMonstruo = z.object({ ... });
+// const validar = (schema) => (req, res, next) => { ... };
+// app.post('/monstruos', validar(esquemaMonstruo), (req, res) => { ... });
 
 // Configuración HTTPS
 const opcionesHttps = {
@@ -50,47 +36,42 @@ const opcionesHttps = {
 
 const app = express();
 
-// zod
-const esquemaMonstruo = z.object({
-  nombre: z.string({
-    required_error: "El nombre es obligatorio",
-    invalid_type_error: "El nombre debe ser una cadena de texto"
-  }).min(3, "El nombre es demasiado corto! debe tener al menos 3 caracteres"),
-
-  especie: z.string({
-    required_error: "La especie es obligatoria"
-  }),
-
-  nivelPeligro: z.number({
-    invalid_type_error: "El nivel de peligro debe ser un número entero"
-  }).int().min(1, "El peligro mínimo es 1").max(10, "El peligro máximo es 10").optional(),
-
-  elementos: z.array(z.string(), {
-    invalid_type_error: "Los elementos deben ser un arreglo de textos"
-  }).optional()
-});
-
-// Middleware
-const validar = (schema) => (req, res, next) => {
-  const resultado = schema.safeParse(req.body);
-
-  if (!resultado.success) {
-    const errores = resultado.error.issues.map(err => ({
-      campo: err.path.join('.'),
-      mensaje: err.message
-    }));
-    return res.status(400).json({ error: 'Validación fallida con Zod', errores });
-  }
-
-  req.body = resultado.data;
-  next();
+//swagger 2
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'API Servidorsito - Monstruopedia',
+      description: 'Documentación Swagger',
+      contact: {
+        name: 'Gael Onofre García'
+      }
+    },
+    servers: [
+      {
+        url: 'https://localhost:8082',
+      }
+    ]
+  },
+  apis: [
+    path.join(__dirname, 'index.js'),
+    path.join(__dirname, './routes/Router.js')
+  ]
 };
+
+// swagger
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+
+//middleware
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocs)); //3
+
+app.get('/api-spec', (req, res) => {
+  res.json(swaggerDocs);
+});
 
 // Multer
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
+  destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -127,8 +108,7 @@ app.post('/subir-archivo', upload.single('archivo'), (req, res) => {
   });
 });
 
-// Vista Pug
-app.get('/ruta', (req, res, next) => {
+app.get('/ruta', (req, res) => {
   let opciones = {
     titulo: "Monster Hunter",
     subtitulo: "Monstruopedia",
@@ -137,25 +117,11 @@ app.get('/ruta', (req, res, next) => {
   res.render('plantilla', opciones);
 });
 
-// zod
-app.post('/monstruos', validar(esquemaMonstruo), (req, res) => {
-  res.status(201).json({
-    mensaje: '¡Monstruo validado y registrado exitosamente con Zod!',
-    datos: req.body
-  });
-});
-
+// Rutas base
 app.use('/monstruos', Router.router);
-
-// app.use('/monstruos', apiKEY.apiKeyAuth([process.env.API_KEY]), Router.router);
-// app.use('/monstruos', verificarJWT, Router.router);
 
 // Servidor HTTPS
 https.createServer(opcionesHttps, app).listen(8082, () => {
-  console.log("Servidor seguro HTTPS escuchando en: https://localhost:8082");
+  console.log(" https://localhost:8082");
+  console.log(" https://localhost:8082/api-docs");
 });
-
-// app.listen(8082, function(err) {
-//   if (err) console.log(err);
-//   console.log("Servidor escuchando en puerto 8082");
-// });
